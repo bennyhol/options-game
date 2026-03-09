@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>OptionMaster: Defeat the Algos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <!-- ============ MENU SCREEN ============ -->
+  <section data-screen="menu" class="screen screen-menu">
+    <div class="menu-container">
+      <div class="menu-logo">
+        <div class="logo-icon">&#9816;</div>
+        <h1 id="game-title">OptionMaster</h1>
+        <p class="menu-subtitle">Defeat the Algos</p>
+      </div>
+      <div class="menu-tagline">Learn options trading through interactive puzzles</div>
+      <div class="menu-buttons">
+        <button class="btn btn-primary btn-large" id="btn-play">Play</button>
+        <button class="btn btn-secondary" id="btn-how-to-play">How to Play</button>
+        <button class="btn btn-ghost" id="btn-reset-progress">Reset Progress</button>
+      </div>
+      <div class="cheat-hint">Triple-tap the title for secrets...</div>
+    </div>
+    <!-- Hidden cheat code input for mobile -->
+    <div id="cheat-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Enter Code</h3>
+        <input type="text" id="cheat-input" placeholder="Enter cheat code..." autocomplete="off" autocapitalize="characters">
+        <div class="modal-buttons">
+          <button class="btn btn-primary" id="cheat-submit">Submit</button>
+          <button class="btn btn-ghost" id="cheat-close">Cancel</button>
+        </div>
+        <p id="cheat-feedback" class="cheat-feedback"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW TO PLAY SCREEN ============ -->
+  <section data-screen="howToPlay" class="screen screen-howtoplay hidden">
+    <div class="screen-header">
+      <button class="btn-back" id="btn-back-howto">&larr;</button>
+      <h2>How to Play</h2>
+    </div>
+    <div class="howto-content">
+      <div class="howto-card">
+        <div class="howto-icon">&#128218;</div>
+        <h3>Learn</h3>
+        <p>Each level teaches a new options trading concept. Read the briefing carefully to understand the strategy.</p>
+      </div>
+      <div class="howto-card">
+        <div class="howto-icon">&#127919;</div>
+        <h3>Solve</h3>
+        <p>Build option strategies by selecting contracts from the option chain. Match the correct legs to complete each puzzle.</p>
+      </div>
+      <div class="howto-card">
+        <div class="howto-icon">&#128200;</div>
+        <h3>Profit</h3>
+        <p>See your P&L graph to understand max profit, max loss, and breakeven points. Master the strategy to advance!</p>
+      </div>
+      <div class="howto-card">
+        <div class="howto-icon">&#128161;</div>
+        <h3>Key Rule</h3>
+        <p><strong>1 Option Contract = 100 Shares.</strong> A $2.00 premium actually costs you $200!</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LEVEL SELECT SCREEN ============ -->
+  <section data-screen="levelSelect" class="screen screen-levels hidden">
+    <div class="screen-header">
+      <button class="btn-back" id="btn-back-levels">&larr;</button>
+      <h2>Choose Your Battle</h2>
+    </div>
+    <div class="levels-grid" id="levels-grid">
+      <!-- Populated by JS -->
+    </div>
+  </section>
+
+  <!-- ============ GAMEPLAY SCREEN ============ -->
+  <section data-screen="gameplay" class="screen screen-gameplay hidden">
+    <!-- Contract reminder banner -->
+    <div id="contract-reminder" class="contract-reminder">
+      &#9888; 1 Contract = 100 Shares &bull; $2.00 premium = $200 cost
+    </div>
+
+    <div class="gameplay-header">
+      <button class="btn-back" id="btn-back-gameplay">&larr;</button>
+      <div class="level-title" id="gameplay-title">Level 1</div>
+      <div class="portfolio-display">
+        <span class="cash-label">Cash:</span>
+        <span id="portfolio-cash">$10,000</span>
+      </div>
+    </div>
+
+    <!-- Briefing overlay -->
+    <div id="briefing-overlay" class="briefing-overlay">
+      <div class="briefing-content">
+        <div class="briefing-badge" id="briefing-badge">Level 1</div>
+        <h2 id="briefing-title">The Building Blocks</h2>
+        <div id="briefing-text" class="briefing-text"></div>
+        <div id="briefing-objective" class="briefing-objective"></div>
+        <button class="btn btn-primary btn-large" id="btn-start-puzzle">Let's Go!</button>
+      </div>
+    </div>
+
+    <!-- Main gameplay area -->
+    <div class="gameplay-body">
+      <!-- Scenario info bar -->
+      <div class="scenario-bar">
+        <div class="stock-info">
+          <span class="ticker" id="ticker">AAPL</span>
+          <span class="stock-price" id="stock-price">$150.00</span>
+        </div>
+        <div class="scenario-meta">
+          <span id="days-to-expiry">30 DTE</span>
+          <span id="iv-display">IV: 25%</span>
+        </div>
+      </div>
+
+      <!-- Time decay bar (Level 2+) -->
+      <div id="time-decay-container" class="time-decay-container hidden">
+        <div class="time-decay-label">Time Remaining</div>
+        <div class="time-decay-bar">
+          <div class="time-decay-fill" id="time-decay-fill"></div>
+        </div>
+        <div class="time-decay-value" id="time-decay-value">30 days</div>
+      </div>
+
+      <!-- Greeks dashboard (Level 3+) -->
+      <div id="greeks-dashboard" class="greeks-dashboard hidden">
+        <h4 class="section-title">The Greeks</h4>
+        <div class="greeks-grid">
+          <div class="greek-meter" data-greek="delta">
+            <div class="greek-label">&#916; Delta</div>
+            <div class="greek-bar-wrap"><div class="greek-bar" id="greek-delta"></div></div>
+            <div class="greek-value" id="greek-delta-val">0.00</div>
+            <div class="greek-desc">Speed</div>
+          </div>
+          <div class="greek-meter" data-greek="gamma">
+            <div class="greek-label">&#915; Gamma</div>
+            <div class="greek-bar-wrap"><div class="greek-bar" id="greek-gamma"></div></div>
+            <div class="greek-value" id="greek-gamma-val">0.00</div>
+            <div class="greek-desc">Acceleration</div>
+          </div>
+          <div class="greek-meter" data-greek="theta">
+            <div class="greek-label">&#920; Theta</div>
+            <div class="greek-bar-wrap"><div class="greek-bar" id="greek-theta"></div></div>
+            <div class="greek-value" id="greek-theta-val">0.00</div>
+            <div class="greek-desc">Time Decay</div>
+          </div>
+          <div class="greek-meter" data-greek="vega">
+            <div class="greek-label">V Vega</div>
+            <div class="greek-bar-wrap"><div class="greek-bar" id="greek-vega"></div></div>
+            <div class="greek-value" id="greek-vega-val">0.00</div>
+            <div class="greek-desc">Volatility</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Puzzle instructions -->
+      <div class="puzzle-instruction" id="puzzle-instruction">
+        Select the correct option to proceed.
+      </div>
+
+      <!-- Option chain -->
+      <div class="option-chain-container">
+        <h4 class="section-title">Option Chain</h4>
+        <div class="chain-header">
+          <span class="chain-col">Strike</span>
+          <span class="chain-col">Calls</span>
+          <span class="chain-col">Puts</span>
+        </div>
+        <div class="option-chain" id="option-chain">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Strategy builder -->
+      <div class="strategy-builder">
+        <h4 class="section-title">Your Strategy <span id="strategy-name" class="strategy-name"></span></h4>
+        <div class="selected-legs" id="selected-legs">
+          <div class="empty-legs">Tap options above to build your strategy</div>
+        </div>
+        <div class="strategy-summary" id="strategy-summary"></div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="action-bar">
+        <button class="btn btn-danger" id="btn-clear-legs">Clear</button>
+        <button class="btn btn-warning hidden" id="btn-roll">Roll &#x21bb;</button>
+        <button class="btn btn-primary btn-large" id="btn-submit-strategy" disabled>Submit Strategy</button>
+      </div>
+    </div>
+
+    <!-- Roll modal -->
+    <div id="roll-modal" class="modal hidden">
+      <div class="modal-content">
+        <h3>Roll Your Position</h3>
+        <p class="roll-explanation">Your trade is going against you. Roll to extend and adjust!</p>
+        <div class="roll-options" id="roll-options">
+          <!-- Populated by JS -->
+        </div>
+        <button class="btn btn-ghost" id="roll-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Step completion overlay (for multi-step levels) -->
+    <div id="step-overlay" class="step-overlay hidden">
+      <div class="step-content">
+        <div class="step-icon">&#10004;</div>
+        <h3 id="step-title">Step Complete!</h3>
+        <p id="step-text"></p>
+        <button class="btn btn-primary" id="btn-next-step">Next Step</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS SCREEN ============ -->
+  <section data-screen="results" class="screen screen-results hidden">
+    <div class="results-container">
+      <div class="results-verdict" id="results-verdict">
+        <div class="verdict-icon" id="verdict-icon">&#127942;</div>
+        <h2 id="verdict-title">Victory!</h2>
+        <p id="verdict-subtitle">You defeated the Algo!</p>
+      </div>
+
+      <!-- P&L Graph -->
+      <div class="pnl-graph-container">
+        <h4 class="section-title">Profit & Loss at Expiration</h4>
+        <canvas id="pnl-canvas" width="600" height="350"></canvas>
+        <div class="pnl-legend" id="pnl-legend"></div>
+      </div>
+
+      <!-- Key metrics -->
+      <div class="results-metrics" id="results-metrics">
+        <div class="metric">
+          <span class="metric-label">Max Profit</span>
+          <span class="metric-value profit" id="metric-max-profit">$500</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Max Loss</span>
+          <span class="metric-value loss" id="metric-max-loss">-$200</span>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Breakeven</span>
+          <span class="metric-value" id="metric-breakeven">$152.00</span>
+        </div>
+      </div>
+
+      <!-- Explanation -->
+      <div class="results-explanation" id="results-explanation"></div>
+
+      <div class="results-buttons">
+        <button class="btn btn-primary btn-large" id="btn-next-level">Next Level</button>
+        <button class="btn btn-secondary" id="btn-retry-level">Retry</button>
+        <button class="btn btn-ghost" id="btn-back-to-levels">Level Select</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONFIRM MODAL ============ -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="confirm-title">Confirm</h3>
+      <p id="confirm-text">Are you sure?</p>
+      <div class="modal-buttons">
+        <button class="btn btn-primary" id="confirm-yes">Yes</button>
+        <button class="btn btn-ghost" id="confirm-no">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/game.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/ui.js"></script>
+</body>
+</html>
