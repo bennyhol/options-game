@@ -22,7 +22,7 @@ function generateChain(currentPrice, daysToExpiry, iv, strikeInterval) {
   const interval = strikeInterval || 5;
   const atm = roundToStrike(currentPrice, interval);
   const strikes = [];
-  for (let i = -4; i <= 4; i++) {
+  for (let i = -6; i <= 6; i++) {
     strikes.push(atm + i * interval);
   }
 
@@ -100,9 +100,9 @@ const LEVELS = [
     get steps() {
       return [
         {
-          objective: '<strong>The Algo is rising!</strong> Buy an <strong>In-The-Money (ITM) Call</strong> to attack. ' +
-            'A Call is ITM when the strike price is <em>below</em> the stock price. ' +
-            'Look for intrinsic value!',
+          objective: '<strong>The stock is rising!</strong> Buy an <strong>In-The-Money (ITM) Call</strong> to profit from the move. ' +
+            'A Call is ITM when the strike price is <em>below</em> the current stock price. ' +
+            'Select one Call option from the chain.',
           selectMode: 'call_only',
           direction: 'long',
           validate(legs, scenario) {
@@ -129,9 +129,9 @@ const LEVELS = [
           }
         },
         {
-          objective: '<strong>The Algo crashes!</strong> Now buy a <strong>Put</strong> to defend. ' +
+          objective: '<strong>The stock is falling!</strong> Now buy a <strong>Put</strong> to profit from the decline. ' +
             'A Put gives you the right to SELL at the strike price. ' +
-            'Buy an ITM Put (strike ABOVE the stock price).',
+            'An ITM Put has a strike ABOVE the current stock price. Select one.',
           selectMode: 'put_only',
           direction: 'long',
           validate(legs, scenario) {

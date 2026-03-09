@@ -121,118 +121,167 @@ function renderOptionChain(scenario, step) {
   const selectMode = step.selectMode || 'both';
   const defaultDirection = step.direction || null;
 
+  // Calculate bid/ask spread (ask = premium, bid = premium - small spread)
+  function spread(premium) {
+    const s = Math.max(0.01, premium * 0.05 + 0.02);
+    return Math.round(s * 100) / 100;
+  }
+
   scenario.chain.forEach(row => {
     const rowEl = document.createElement('div');
-    rowEl.className = 'chain-row' + (row.isATM ? ' atm-row' : '');
+    rowEl.className = 'chain-row';
+    if (row.isATM) rowEl.classList.add('atm-row');
+    // Subtle background tint for ITM regions (no labels!)
+    if (row.strike < scenario.currentPrice) rowEl.classList.add('itm-call');
+    if (row.strike > scenario.currentPrice) rowEl.classList.add('itm-put');
 
-    // Strike column
+    const callBid = Math.max(0.01, row.callPremium - spread(row.callPremium));
+    const callAsk = row.callPremium;
+    const putBid = Math.max(0.01, row.putPremium - spread(row.putPremium));
+    const putAsk = row.putPremium;
+
+    // Call Bid
+    const callBidEl = document.createElement('div');
+    callBidEl.className = 'chain-option';
+    if (selectMode === 'put_only') callBidEl.classList.add('disabled');
+    callBidEl.textContent = callBid.toFixed(2);
+    callBidEl.dataset.type = 'call';
+    callBidEl.dataset.strike = row.strike;
+    callBidEl.dataset.premium = callBid;
+    callBidEl.dataset.side = 'bid';
+    callBidEl.dataset.delta = row.callDelta;
+    callBidEl.dataset.gamma = row.gamma;
+    callBidEl.dataset.theta = row.theta;
+    callBidEl.dataset.vega = row.vega;
+
+    // Call Ask
+    const callAskEl = document.createElement('div');
+    callAskEl.className = 'chain-option';
+    if (selectMode === 'put_only') callAskEl.classList.add('disabled');
+    callAskEl.textContent = callAsk.toFixed(2);
+    callAskEl.dataset.type = 'call';
+    callAskEl.dataset.strike = row.strike;
+    callAskEl.dataset.premium = callAsk;
+    callAskEl.dataset.side = 'ask';
+    callAskEl.dataset.delta = row.callDelta;
+    callAskEl.dataset.gamma = row.gamma;
+    callAskEl.dataset.theta = row.theta;
+    callAskEl.dataset.vega = row.vega;
+
+    // Strike
     const strikeEl = document.createElement('div');
     strikeEl.className = 'chain-strike';
-    strikeEl.innerHTML = `$${row.strike}<span class="moneyness">${row.callMoneyness}</span>`;
+    strikeEl.textContent = row.strike;
 
-    // Call column
-    const callEl = document.createElement('div');
-    callEl.className = 'chain-option';
-    if (selectMode === 'put_only') callEl.classList.add('disabled');
-    callEl.innerHTML = `
-      <span class="premium">$${row.callPremium.toFixed(2)}</span>
-      <span class="premium-cost">($${(row.callPremium * 100).toFixed(0)})</span>
-    `;
-    callEl.dataset.type = 'call';
-    callEl.dataset.strike = row.strike;
-    callEl.dataset.premium = row.callPremium;
-    callEl.dataset.delta = row.callDelta;
-    callEl.dataset.gamma = row.gamma;
-    callEl.dataset.theta = row.theta;
-    callEl.dataset.vega = row.vega;
+    // Put Bid
+    const putBidEl = document.createElement('div');
+    putBidEl.className = 'chain-option';
+    if (selectMode === 'call_only') putBidEl.classList.add('disabled');
+    putBidEl.textContent = putBid.toFixed(2);
+    putBidEl.dataset.type = 'put';
+    putBidEl.dataset.strike = row.strike;
+    putBidEl.dataset.premium = putBid;
+    putBidEl.dataset.side = 'bid';
+    putBidEl.dataset.delta = row.putDelta;
+    putBidEl.dataset.gamma = row.gamma;
+    putBidEl.dataset.theta = row.theta;
+    putBidEl.dataset.vega = row.vega;
 
+    // Put Ask
+    const putAskEl = document.createElement('div');
+    putAskEl.className = 'chain-option';
+    if (selectMode === 'call_only') putAskEl.classList.add('disabled');
+    putAskEl.textContent = putAsk.toFixed(2);
+    putAskEl.dataset.type = 'put';
+    putAskEl.dataset.strike = row.strike;
+    putAskEl.dataset.premium = putAsk;
+    putAskEl.dataset.side = 'ask';
+    putAskEl.dataset.delta = row.putDelta;
+    putAskEl.dataset.gamma = row.gamma;
+    putAskEl.dataset.theta = row.theta;
+    putAskEl.dataset.vega = row.vega;
+
+    // Click handlers - bid = sell, ask = buy (like real markets)
     if (selectMode !== 'put_only') {
-      callEl.addEventListener('click', () => {
-        handleOptionClick(callEl, 'call', row, defaultDirection);
-      });
+      callBidEl.addEventListener('click', () => handleOptionClick(callBidEl, 'call', row, 'short'));
+      callAskEl.addEventListener('click', () => handleOptionClick(callAskEl, 'call', row, 'long'));
     }
-
-    // Put column
-    const putEl = document.createElement('div');
-    putEl.className = 'chain-option';
-    if (selectMode === 'call_only') putEl.classList.add('disabled');
-    putEl.innerHTML = `
-      <span class="premium">$${row.putPremium.toFixed(2)}</span>
-      <span class="premium-cost">($${(row.putPremium * 100).toFixed(0)})</span>
-    `;
-    putEl.dataset.type = 'put';
-    putEl.dataset.strike = row.strike;
-    putEl.dataset.premium = row.putPremium;
-    putEl.dataset.delta = row.putDelta;
-    putEl.dataset.gamma = row.gamma;
-    putEl.dataset.theta = row.theta;
-    putEl.dataset.vega = row.vega;
-
     if (selectMode !== 'call_only') {
-      putEl.addEventListener('click', () => {
-        handleOptionClick(putEl, 'put', row, defaultDirection);
-      });
+      putBidEl.addEventListener('click', () => handleOptionClick(putBidEl, 'put', row, 'short'));
+      putAskEl.addEventListener('click', () => handleOptionClick(putAskEl, 'put', row, 'long'));
     }
 
-    rowEl.appendChild(callEl);
+    // For steps with forced direction, override: clicking either bid or ask uses that direction
+    if (defaultDirection) {
+      const dir = defaultDirection;
+      if (selectMode !== 'put_only') {
+        callBidEl.onclick = () => handleOptionClick(callBidEl, 'call', row, dir);
+        callAskEl.onclick = () => handleOptionClick(callAskEl, 'call', row, dir);
+      }
+      if (selectMode !== 'call_only') {
+        putBidEl.onclick = () => handleOptionClick(putBidEl, 'put', row, dir);
+        putAskEl.onclick = () => handleOptionClick(putAskEl, 'put', row, dir);
+      }
+    }
+
+    rowEl.appendChild(callBidEl);
+    rowEl.appendChild(callAskEl);
     rowEl.appendChild(strikeEl);
-    rowEl.appendChild(putEl);
+    rowEl.appendChild(putBidEl);
+    rowEl.appendChild(putAskEl);
     chain.appendChild(rowEl);
   });
+
+  // Scroll to ATM row
+  const atmRow = chain.querySelector('.atm-row');
+  if (atmRow) {
+    setTimeout(() => atmRow.scrollIntoView({ block: 'center', behavior: 'smooth' }), 100);
+  }
 }
 
-function handleOptionClick(element, type, row, defaultDirection) {
+function handleOptionClick(element, type, row, direction) {
   const strike = parseFloat(element.dataset.strike);
   const premium = parseFloat(element.dataset.premium);
+  const level = getLevelDef(GameState.currentLevel);
+  const maxLegs = level.maxLegs || 4;
 
-  // Check if already selected - if so, remove
+  // Check if this exact option is already selected - if so, deselect
   const existingIndex = GameState.selectedLegs.findIndex(
     l => l.type === type && l.strike === strike
   );
   if (existingIndex >= 0) {
     removeLeg(existingIndex);
-    element.classList.remove('selected-long', 'selected-short');
+    // Clear highlights for this strike+type
+    document.querySelectorAll('.chain-option').forEach(el => {
+      if (el.dataset.strike === String(strike) && el.dataset.type === type) {
+        el.classList.remove('selected-long', 'selected-short');
+      }
+    });
     return;
   }
 
-  // Determine direction
-  let direction = defaultDirection;
-  if (!direction) {
-    // If no default, toggle: first click = long, same option again = toggle to short
-    direction = 'long';
-    // For sell-mode steps (like covered calls), default to short
-    const level = getLevelDef(GameState.currentLevel);
-    const step = level.steps ? level.steps[GameState.currentStep] : level;
-    if (step.direction === 'short') direction = 'short';
+  // For single-leg levels: auto-deselect previous selection
+  if (maxLegs === 1 && GameState.selectedLegs.length > 0) {
+    // Clear all selections
+    document.querySelectorAll('.chain-option.selected-long, .chain-option.selected-short').forEach(el => {
+      el.classList.remove('selected-long', 'selected-short');
+    });
+    GameState.selectedLegs = [];
   }
 
   const greeks = {
-    delta: type === 'call' ? parseFloat(element.dataset.delta) : parseFloat(element.dataset.delta),
+    delta: parseFloat(element.dataset.delta),
     gamma: parseFloat(element.dataset.gamma),
     theta: parseFloat(element.dataset.theta),
     vega: parseFloat(element.dataset.vega)
   };
 
-  // For multi-leg with no default direction, use a smarter approach
-  // If this is a level with direction: null, alternate or infer
-  if (defaultDirection === null) {
-    const level = getLevelDef(GameState.currentLevel);
-    const step = level.steps ? level.steps[GameState.currentStep] : level;
-    // For vertical spreads, first leg long, second short (or vice versa)
-    if (GameState.selectedLegs.length === 0) {
-      // Check step context for credit vs debit
-      if (step.objective && step.objective.includes('Sell') && step.objective.indexOf('Sell') < step.objective.indexOf('Buy')) {
-        direction = 'short';
-      } else {
-        direction = 'long';
-      }
-    } else {
-      // Alternate direction from first leg
-      direction = GameState.selectedLegs[0].direction === 'long' ? 'short' : 'long';
+  // Highlight both bid and ask cells for this strike+type
+  document.querySelectorAll('.chain-option').forEach(el => {
+    if (el.dataset.strike === String(strike) && el.dataset.type === type) {
+      el.classList.add(direction === 'long' ? 'selected-long' : 'selected-short');
     }
-  }
-
-  element.classList.add(direction === 'long' ? 'selected-long' : 'selected-short');
+  });
 
   addLeg(type, direction, strike, premium, greeks);
 }
@@ -301,7 +350,6 @@ function updateStrategyInfo() {
 function updateSubmitButton() {
   const btn = document.getElementById('btn-submit-strategy');
   const level = getLevelDef(GameState.currentLevel);
-  const step = level.steps ? level.steps[GameState.currentStep] : level;
 
   // Special case: level 2 uses sell button, not submit
   if (level.id === 1) {
@@ -309,7 +357,11 @@ function updateSubmitButton() {
     return;
   }
 
-  btn.disabled = GameState.selectedLegs.length === 0;
+  const maxLegs = level.maxLegs || 4;
+  const legCount = GameState.selectedLegs.length;
+
+  // Enable when at least 1 leg is selected, and not exceeding max
+  btn.disabled = legCount === 0 || legCount > maxLegs;
 }
 
 // ============ GREEKS DASHBOARD ============
