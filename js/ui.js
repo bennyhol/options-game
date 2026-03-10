@@ -223,27 +223,21 @@ function renderOptionChain(scenario, step) {
     putAskEl.dataset.theta = row.theta;
     putAskEl.dataset.vega = row.vega;
 
-    // Click handlers - bid = sell, ask = buy (like real markets)
+    // Click handlers
+    // When a forced direction is set, both bid and ask use that direction.
+    // Otherwise, bid = sell (short), ask = buy (long) like real markets.
+    const callBidDir = defaultDirection || 'short';
+    const callAskDir = defaultDirection || 'long';
+    const putBidDir = defaultDirection || 'short';
+    const putAskDir = defaultDirection || 'long';
+
     if (selectMode !== 'put_only') {
-      callBidEl.addEventListener('click', () => handleOptionClick(callBidEl, 'call', row, 'short'));
-      callAskEl.addEventListener('click', () => handleOptionClick(callAskEl, 'call', row, 'long'));
+      callBidEl.addEventListener('click', () => handleOptionClick(callBidEl, 'call', row, callBidDir));
+      callAskEl.addEventListener('click', () => handleOptionClick(callAskEl, 'call', row, callAskDir));
     }
     if (selectMode !== 'call_only') {
-      putBidEl.addEventListener('click', () => handleOptionClick(putBidEl, 'put', row, 'short'));
-      putAskEl.addEventListener('click', () => handleOptionClick(putAskEl, 'put', row, 'long'));
-    }
-
-    // For steps with forced direction, override: clicking either bid or ask uses that direction
-    if (defaultDirection) {
-      const dir = defaultDirection;
-      if (selectMode !== 'put_only') {
-        callBidEl.onclick = () => handleOptionClick(callBidEl, 'call', row, dir);
-        callAskEl.onclick = () => handleOptionClick(callAskEl, 'call', row, dir);
-      }
-      if (selectMode !== 'call_only') {
-        putBidEl.onclick = () => handleOptionClick(putBidEl, 'put', row, dir);
-        putAskEl.onclick = () => handleOptionClick(putAskEl, 'put', row, dir);
-      }
+      putBidEl.addEventListener('click', () => handleOptionClick(putBidEl, 'put', row, putBidDir));
+      putAskEl.addEventListener('click', () => handleOptionClick(putAskEl, 'put', row, putAskDir));
     }
 
     rowEl.appendChild(callBidEl);
