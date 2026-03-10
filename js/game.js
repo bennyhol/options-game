@@ -413,10 +413,131 @@ function calculateStrategyMetrics(legs, currentPrice) {
   };
 }
 
+// ============ STOCK MOVEMENT SIMULATION ============
+function simulateStockMove(scenario, legs) {
+  const price = scenario.currentPrice;
+  // Determine likely direction based on the strategy
+  const hasLongCalls = legs.some(l => l.type === 'call' && l.direction === 'long');
+  const hasLongPuts = legs.some(l => l.type === 'put' && l.direction === 'long');
+  const hasShortCalls = legs.some(l => l.type === 'call' && l.direction === 'short');
+  const hasShortPuts = legs.some(l => l.type === 'put' && l.direction === 'short');
+
+  let movePercent;
+
+  if (hasLongCalls && !hasLongPuts && !hasShortCalls) {
+    // Bullish long call - stock goes up to make it profitable
+    movePercent = rand(3, 12);
+  } else if (hasLongPuts && !hasLongCalls && !hasShortPuts) {
+    // Bearish long put - stock goes down
+    movePercent = -rand(3, 12);
+  } else if (hasShortPuts && !hasShortCalls) {
+    // Selling puts - stock stays flat or goes up slightly (profitable)
+    movePercent = rand(-2, 5);
+  } else if (hasShortCalls && !hasShortPuts) {
+    // Selling calls - stock stays flat or dips slightly (profitable)
+    movePercent = rand(-5, 2);
+  } else if (hasShortPuts && hasShortCalls) {
+    // Iron condor / short strangle - stock stays flat (profitable)
+    movePercent = rand(-3, 3);
+  } else if (hasLongCalls && hasLongPuts) {
+    // Straddle/strangle - stock moves big
+    movePercent = (Math.random() > 0.5 ? 1 : -1) * rand(8, 18);
+  } else if (hasLongCalls && hasShortCalls) {
+    // Vertical spread - moderate move in profitable direction
+    const longCall = legs.find(l => l.type === 'call' && l.direction === 'long');
+    const shortCall = legs.find(l => l.type === 'call' && l.direction === 'short');
+    if (longCall.strike < shortCall.strike) {
+      movePercent = rand(4, 10); // bull call spread
+    } else {
+      movePercent = rand(-8, -2); // bear call spread
+    }
+  } else {
+    movePercent = rand(-5, 5);
+  }
+
+  const endPrice = Math.round((price * (1 + movePercent / 100)) * 100) / 100;
+  return endPrice;
+}
+
+function generatePnLExplanation(legs, startPrice, endPrice, actualPnL) {
+  const moved = endPrice - startPrice;
+  const direction = moved >= 0 ? 'rose' : 'fell';
+  const movedAbs = Math.abs(moved).toFixed(2);
+  const movedPct = Math.abs((moved / startPrice) * 100).toFixed(1);
+
+  let explanation = `The stock ${direction} from <strong>$${startPrice.toFixed(2)}</strong> to <strong>$${endPrice.toFixed(2)}</strong> (${moved >= 0 ? '+' : '-'}$${movedAbs}, ${movedPct}%).<br><br>`;
+
+  for (const leg of legs) {
+    const action = leg.direction === 'long' ? 'Bought' : 'Sold';
+    const typeName = leg.type === 'call' ? 'Call' : 'Put';
+    const premiumCost = (leg.premium * 100).toFixed(0);
+
+    let intrinsic = 0;
+    if (leg.type === 'call') {
+      intrinsic = Math.max(0, endPrice - leg.strike);
+    } else {
+      intrinsic = Math.max(0, leg.strike - endPrice);
+    }
+
+    const intrinsicTotal = (intrinsic * 100).toFixed(0);
+    let legPnL;
+    if (leg.direction === 'long') {
+      legPnL = (intrinsic - leg.premium) * 100;
+    } else {
+      legPnL = (leg.premium - intrinsic) * 100;
+    }
+
+    if (leg.direction === 'long') {
+      if (leg.type === 'call') {
+        explanation += `<strong>${action} $${leg.strike} ${typeName}</strong> for $${leg.premium.toFixed(2)}/share ($${premiumCost} total). `;
+        if (endPrice > leg.strike) {
+          explanation += `Stock ended above $${leg.strike}, so this call is worth $${intrinsic.toFixed(2)}/share ($${intrinsicTotal}). `;
+          explanation += `After subtracting the $${premiumCost} you paid: <strong>${legPnL >= 0 ? '+' : ''}$${legPnL.toFixed(0)}</strong>.<br>`;
+        } else {
+          explanation += `Stock ended below $${leg.strike}, so this call expired worthless. You lost the $${premiumCost} premium.<br>`;
+        }
+      } else {
+        explanation += `<strong>${action} $${leg.strike} ${typeName}</strong> for $${leg.premium.toFixed(2)}/share ($${premiumCost} total). `;
+        if (endPrice < leg.strike) {
+          explanation += `Stock ended below $${leg.strike}, so this put is worth $${intrinsic.toFixed(2)}/share ($${intrinsicTotal}). `;
+          explanation += `After subtracting the $${premiumCost} you paid: <strong>${legPnL >= 0 ? '+' : ''}$${legPnL.toFixed(0)}</strong>.<br>`;
+        } else {
+          explanation += `Stock ended above $${leg.strike}, so this put expired worthless. You lost the $${premiumCost} premium.<br>`;
+        }
+      }
+    } else {
+      if (leg.type === 'call') {
+        explanation += `<strong>${action} $${leg.strike} ${typeName}</strong> for $${leg.premium.toFixed(2)}/share ($${premiumCost} credit). `;
+        if (endPrice > leg.strike) {
+          explanation += `Stock ended above $${leg.strike}, so you owe $${intrinsic.toFixed(2)}/share ($${intrinsicTotal}). `;
+          explanation += `After the $${premiumCost} credit you collected: <strong>${legPnL >= 0 ? '+' : ''}$${legPnL.toFixed(0)}</strong>.<br>`;
+        } else {
+          explanation += `Stock ended below $${leg.strike}, so the call expired worthless. You keep the $${premiumCost} credit!<br>`;
+        }
+      } else {
+        explanation += `<strong>${action} $${leg.strike} ${typeName}</strong> for $${leg.premium.toFixed(2)}/share ($${premiumCost} credit). `;
+        if (endPrice < leg.strike) {
+          explanation += `Stock ended below $${leg.strike}, so you owe $${intrinsic.toFixed(2)}/share ($${intrinsicTotal}). `;
+          explanation += `After the $${premiumCost} credit you collected: <strong>${legPnL >= 0 ? '+' : ''}$${legPnL.toFixed(0)}</strong>.<br>`;
+        } else {
+          explanation += `Stock ended above $${leg.strike}, so the put expired worthless. You keep the $${premiumCost} credit!<br>`;
+        }
+      }
+    }
+  }
+
+  explanation += `<br><strong>Total P&L: ${actualPnL >= 0 ? '+' : ''}$${actualPnL.toFixed(0)}</strong>`;
+  return explanation;
+}
+
 // ============ SUBMISSION & VALIDATION ============
 function submitStrategy() {
   const level = getLevelDef(GameState.currentLevel);
   if (!level) return;
+
+  // Extra safety: if button is somehow disabled, don't proceed
+  const btn = document.getElementById('btn-submit-strategy');
+  if (btn && btn.disabled) return;
 
   const step = level.steps ? level.steps[GameState.currentStep] : level;
   const result = step.validate(GameState.selectedLegs, GameState.activePuzzle);
@@ -425,29 +546,36 @@ function submitStrategy() {
     // Multi-step level?
     if (level.steps && GameState.currentStep < level.steps.length - 1) {
       showStepComplete(result.feedback, () => {
+        // Apply the completed step's scenario modifications before advancing
+        if (step.modifyScenario) {
+          step.modifyScenario(GameState.activePuzzle);
+        }
         GameState.currentStep++;
         GameState.selectedLegs = [];
-        const nextStep = level.steps[GameState.currentStep];
-        // Update scenario if step modifies it
-        if (nextStep.modifyScenario) {
-          nextStep.modifyScenario(GameState.activePuzzle);
-        }
         renderGameplay();
       });
       return;
     }
 
-    // Final step or single-step level - show results
-    const metrics = calculateStrategyMetrics(
-      GameState.selectedLegs,
-      GameState.activePuzzle.currentPrice
-    );
+    // Final step or single-step level - simulate stock movement and show results
+    const scenario = GameState.activePuzzle;
+    const allLegs = [...GameState.selectedLegs];
+    const startPrice = scenario.currentPrice;
+    const endPrice = simulateStockMove(scenario, allLegs);
+    const actualPnL = calculatePayoff(allLegs, endPrice);
+    const metrics = calculateStrategyMetrics(allLegs, startPrice);
+    const pnlExplanation = generatePnLExplanation(allLegs, startPrice, endPrice, actualPnL);
+
     GameState.lastResult = {
       won: true,
-      legs: [...GameState.selectedLegs],
+      legs: allLegs,
       metrics,
       feedback: result.feedback,
-      explanation: result.explanation || level.explanation
+      explanation: result.explanation || level.explanation,
+      startPrice,
+      endPrice,
+      actualPnL,
+      pnlExplanation
     };
     completeLevel(GameState.currentLevel, true);
     navigate('results');

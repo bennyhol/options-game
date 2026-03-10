@@ -57,9 +57,31 @@ function renderGameplay() {
   overlay.classList.remove('hidden');
   document.getElementById('briefing-badge').textContent = `Level ${level.id + 1}`;
   document.getElementById('briefing-title').textContent = level.title;
-  document.getElementById('briefing-text').innerHTML = level.description +
-    (scenario.event ? `<br><br><strong>${scenario.event}</strong>` : '') +
-    (scenario.owns100Shares ? '<br><br>You currently own 100 shares.' : '');
+
+  // Build briefing text with stock price and beginner tips
+  let briefingHTML = level.description;
+  if (scenario.event) briefingHTML += `<br><br><strong>${scenario.event}</strong>`;
+  if (scenario.owns100Shares) briefingHTML += '<br><br>You currently own 100 shares.';
+
+  // Stock price display in briefing
+  briefingHTML += `<div class="briefing-stock-price">
+    <span class="bsp-label">Current Stock Price</span>
+    <span class="bsp-ticker">${scenario.ticker}</span>
+    <span class="bsp-price">$${scenario.currentPrice.toFixed(2)}</span>
+  </div>`;
+
+  // Beginner tip for early levels
+  if (level.id <= 2) {
+    briefingHTML += `<div class="beginner-tip">
+      <div class="tip-header">Quick Tip for Beginners</div>
+      <strong>Bid</strong> = the price someone will pay YOU if you <strong>sell</strong>. Tap Bid to sell.<br>
+      <strong>Ask</strong> = the price YOU pay to <strong>buy</strong>. Tap Ask to buy.<br><br>
+      Think of it like a store: the Ask is the sticker price (what you pay to buy),
+      and the Bid is what a store offers when you sell back to them (always a bit less).
+    </div>`;
+  }
+
+  document.getElementById('briefing-text').innerHTML = briefingHTML;
   document.getElementById('briefing-objective').innerHTML = step.objective || level.objective || '';
 
   // Scenario bar
@@ -523,6 +545,34 @@ function renderResults() {
     title.textContent = 'Not Quite!';
     title.style.color = 'var(--danger)';
     subtitle.textContent = 'The Algo got you this time. Try again!';
+  }
+
+  // Stock movement display
+  const moveEl = document.getElementById('stock-movement');
+  if (result.startPrice && result.endPrice) {
+    moveEl.classList.remove('hidden');
+    document.getElementById('move-start').textContent = '$' + result.startPrice.toFixed(2);
+    document.getElementById('move-end').textContent = '$' + result.endPrice.toFixed(2);
+
+    const endEl = document.getElementById('move-end');
+    const moved = result.endPrice - result.startPrice;
+    endEl.className = 'price-end ' + (moved >= 0 ? 'up' : 'down');
+    document.getElementById('move-arrow').innerHTML = moved >= 0 ? '&#8599;' : '&#8600;';
+
+    const pnlEl = document.getElementById('actual-pnl');
+    pnlEl.textContent = (result.actualPnL >= 0 ? '+' : '') + '$' + Math.round(result.actualPnL).toLocaleString();
+    pnlEl.className = 'actual-pnl ' + (result.actualPnL >= 0 ? 'profit' : 'loss');
+  } else {
+    moveEl.classList.add('hidden');
+  }
+
+  // P&L explanation
+  const explainEl = document.getElementById('pnl-explanation');
+  if (result.pnlExplanation) {
+    explainEl.classList.remove('hidden');
+    document.getElementById('pnl-explain-text').innerHTML = result.pnlExplanation;
+  } else {
+    explainEl.classList.add('hidden');
   }
 
   // Metrics

@@ -183,6 +183,13 @@
           <span class="chain-sub">Bid</span>
           <span class="chain-sub">Ask</span>
         </div>
+        <div class="chain-direction-hint">
+          <span class="hint-sell">&#8592; SELL</span>
+          <span class="hint-buy">BUY &#8594;</span>
+          <span class="hint-strike"></span>
+          <span class="hint-sell">&#8592; SELL</span>
+          <span class="hint-buy">BUY &#8594;</span>
+        </div>
         <div class="option-chain" id="option-chain">
           <!-- Populated by JS -->
         </div>
@@ -235,6 +242,22 @@
         <div class="verdict-icon" id="verdict-icon">&#127942;</div>
         <h2 id="verdict-title">Victory!</h2>
         <p id="verdict-subtitle">You defeated the Algo!</p>
+      </div>
+
+      <!-- Stock Movement -->
+      <div class="stock-movement" id="stock-movement">
+        <div class="move-label">Stock Price Movement</div>
+        <span class="price-start" id="move-start">$150.00</span>
+        <span class="move-arrow" id="move-arrow">&#8594;</span>
+        <span class="price-end" id="move-end">$160.00</span>
+        <div class="actual-pnl" id="actual-pnl">+$500</div>
+        <div class="move-label" id="pnl-label">Your Profit/Loss on this trade</div>
+      </div>
+
+      <!-- Why did you earn/lose? -->
+      <div class="pnl-explanation" id="pnl-explanation">
+        <div class="explain-header">Why did this happen?</div>
+        <div id="pnl-explain-text"></div>
       </div>
 
       <!-- P&L Graph -->

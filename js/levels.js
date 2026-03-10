@@ -79,7 +79,10 @@ const LEVELS = [
     id: 0,
     title: 'The Building Blocks',
     concept: 'Calls, Puts & Moneyness',
-    description: 'Learn the basics: buying calls and puts, and what ITM/OTM/ATM mean.',
+    description: 'An option is a contract that gives you the right to buy or sell a stock at a set price. ' +
+      '<strong>Buying</strong> an option costs you money (the premium) but gives you the right to profit if the stock moves your way. ' +
+      '<strong>Selling</strong> an option earns you money upfront (you collect the premium), but you take on an obligation. ' +
+      'Learn the basics: calls, puts, and what ITM/OTM/ATM mean.',
     maxLegs: 1,
     showGreeks: false,
     hasTimeDecay: false,
@@ -100,16 +103,17 @@ const LEVELS = [
     get steps() {
       return [
         {
-          objective: '<strong>The stock is rising!</strong> Buy an <strong>In-The-Money (ITM) Call</strong> to profit from the move. ' +
-            'A Call is ITM when the strike price is <em>below</em> the current stock price. ' +
-            'Select one Call option from the chain.',
+          objective: '<strong>The stock is rising!</strong> Buy an <strong>In-The-Money (ITM) Call</strong> to profit from the move.<br><br>' +
+            'A <strong>Call</strong> = the right to BUY stock at the strike price. ' +
+            'A Call is ITM when the strike price is <em>below</em> the current stock price (it already has value!).<br><br>' +
+            'Tap the <strong>Ask</strong> price (the "BUY" column) on any Call to buy it.',
           selectMode: 'call_only',
           direction: 'long',
           validate(legs, scenario) {
-            if (legs.length !== 1) return { correct: false, feedback: 'Select exactly one Call option.' };
+            if (legs.length !== 1) return { correct: false, feedback: 'Select exactly one Call option. Tap the Ask (BUY) price on any Call.' };
             const leg = legs[0];
             if (leg.type !== 'call') return { correct: false, feedback: 'You need to buy a CALL (right to buy), not a put!' };
-            if (leg.direction !== 'long') return { correct: false, feedback: 'You need to BUY (go long) the call.' };
+            if (leg.direction !== 'long') return { correct: false, feedback: 'You need to BUY (go long) the call. Tap the Ask column.' };
             if (leg.strike >= scenario.currentPrice) {
               return {
                 correct: false,
@@ -129,16 +133,17 @@ const LEVELS = [
           }
         },
         {
-          objective: '<strong>The stock is falling!</strong> Now buy a <strong>Put</strong> to profit from the decline. ' +
-            'A Put gives you the right to SELL at the strike price. ' +
-            'An ITM Put has a strike ABOVE the current stock price. Select one.',
+          objective: '<strong>The stock is falling!</strong> Now buy a <strong>Put</strong> to profit from the decline.<br><br>' +
+            'A <strong>Put</strong> = the right to SELL stock at the strike price. ' +
+            'An ITM Put has a strike ABOVE the current stock price. ' +
+            'Tap the <strong>Ask</strong> price (BUY column) on any Put.',
           selectMode: 'put_only',
           direction: 'long',
           validate(legs, scenario) {
             if (legs.length !== 1) return { correct: false, feedback: 'Select exactly one Put option.' };
             const leg = legs[0];
             if (leg.type !== 'put') return { correct: false, feedback: 'You need a PUT this time!' };
-            if (leg.direction !== 'long') return { correct: false, feedback: 'You need to BUY the put.' };
+            if (leg.direction !== 'long') return { correct: false, feedback: 'You need to BUY the put. Tap the Ask column.' };
             if (leg.strike <= scenario.currentPrice) {
               return {
                 correct: false,
@@ -147,9 +152,40 @@ const LEVELS = [
             }
             return {
               correct: true,
-              feedback: `Great defense! Your $${leg.strike} Put is ITM. If the stock keeps falling, your put gains intrinsic value!`,
-              explanation: 'You learned the basics: Calls profit when stocks rise, Puts profit when stocks fall. ' +
-                'ITM options have intrinsic value. Remember: 1 contract = 100 shares, so every $1 of premium = $100!'
+              feedback: `Great defense! Your $${leg.strike} Put is ITM. If the stock keeps falling, your put gains intrinsic value!`
+            };
+          },
+          modifyScenario(scenario) {
+            scenario.direction = 'bullish';
+            scenario.currentPrice = scenario.currentPrice + randInt(3, 6);
+            scenario.chain = generateChain(scenario.currentPrice, 30, 25, 5);
+          }
+        },
+        {
+          objective: '<strong>Now try SELLING!</strong> The stock is stable and you want to earn income. ' +
+            '<strong>Sell a Put</strong> to collect premium (money paid to you). ' +
+            'When you sell an option, you receive cash upfront but take on an obligation.<br><br>' +
+            'Tap the <strong>Bid</strong> price (the "SELL" column) on an OTM Put (strike below stock price).',
+          selectMode: 'put_only',
+          direction: 'short',
+          validate(legs, scenario) {
+            if (legs.length !== 1) return { correct: false, feedback: 'Sell exactly one Put. Tap the Bid (SELL) column.' };
+            const leg = legs[0];
+            if (leg.type !== 'put') return { correct: false, feedback: 'You need to sell a PUT.' };
+            if (leg.direction !== 'short') return { correct: false, feedback: 'You need to SELL the put. Tap the Bid column (SELL side).' };
+            if (leg.strike >= scenario.currentPrice) {
+              return {
+                correct: false,
+                feedback: `Strike $${leg.strike} is at or above the stock price. Sell an OTM put (strike BELOW the stock price) - it\'s safer!`
+              };
+            }
+            return {
+              correct: true,
+              feedback: `You sold the $${leg.strike} Put and collected $${(leg.premium * 100).toFixed(0)} in premium! ` +
+                `If the stock stays above $${leg.strike}, you keep all the money. That's income generation!`,
+              explanation: 'You learned: Buying options costs money but gives you the right to profit from big moves. ' +
+                'Selling options earns you money upfront but you take on risk if the stock moves against you. ' +
+                'Calls profit when stocks rise, Puts profit when stocks fall. 1 contract = 100 shares!'
             };
           }
         }
